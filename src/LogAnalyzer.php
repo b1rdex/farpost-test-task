@@ -4,38 +4,56 @@ declare(strict_types=1);
 
 namespace App;
 
-use DateTime;
 use DateTimeImmutable;
 use RuntimeException;
-use function fgets;
 
 class LogAnalyzer
 {
     /**
-     * @param resource $stream          поток данных из access-лог'а
-     * @param float    $slaAvailability минимально допустимый уровень доступности (проценты. Например, "99.9")
-     * @param int      $slaResponseTime приемлемое время ответа (миллисекунды. Например, "45")
-     * @param int      $samplePeriod    период семплирования интервалов, в секундах
+     * @var callable|null
+     */
+    private $onLogParseError;
+
+    /**
+     * @param callable|null $onLogParseError обработчик исключений разбора лога
+     *
+     * @psalm-param callable(\Throwable):void $onLogParseError
+     */
+    public function __construct(callable $onLogParseError = null)
+    {
+        $this->onLogParseError = $onLogParseError;
+    }
+
+    /**
+     * @param resource $stream поток данных из access-лог'а
+     * @param float $slaAvailability минимально допустимый уровень доступности (проценты. Например, "99.9")
+     * @param int $slaResponseTime приемлемое время ответа (миллисекунды. Например, "45")
+     * @param int $samplePeriod период семплирования интервалов, в секундах
      *                                  (сколько секунд должно пройти с последней failure, чтобы считать что интервал завершён)
      *
-     * @return string[]
+     * @return array
      */
-    public function analyse($stream, float $slaAvailability, int $slaResponseTime, int $samplePeriod = 5): array
+    public function analyze($stream, float $slaAvailability, int $slaResponseTime, int $samplePeriod = 5): array
     {
         $result = [];
 
         $firstFailAt = null;
-        $lastFailAt = null;
+        $lastProcessedAt = null;
         $failed = 0;
-        $succeed = 0;
+        $succeeded = 0;
 
         while (false !== ($line = fgets($stream))) {
             try {
                 $parsed = $this->parseLine($line);
             } catch (RuntimeException $exception) {
-                if ($exception->getMessage() !== 'Empty log line') {
-                    fwrite(STDERR, $exception->__toString() . \PHP_EOL);
+                if ($this->onLogParseError === null) {
+                    throw $exception;
                 }
+
+                ($this->onLogParseError)($exception);
+                continue;
+            }
+            if ($parsed === null) {
                 continue;
             }
 
@@ -44,9 +62,29 @@ class LogAnalyzer
             assert(\is_int($status));
             assert(\is_float($time));
 
+            // если с последней проблемы прошло больше sample period, то обрабатываем проблемный период
+            if ($firstFailAt !== null && $lastProcessedAt !== null && $at->getTimestamp() > $lastProcessedAt->getTimestamp() + $samplePeriod) {
+                $availability = (float)($succeeded / ($succeeded + $failed) * 100);
+                // todo: remove true
+                if (true || $availability < $slaAvailability) {
+                    $result[] = [
+                        'period start' => $firstFailAt,
+                        'period end' => $lastProcessedAt,
+                        'current time' => $at,
+                        'succeeded count' => $succeeded,
+                        'failed count' => $failed,
+                        'availability' => $availability,
+                    ];
+                }
+                $firstFailAt = null;
+                $failed = $succeeded = 0;
+            }
+
+            // это нам понадобится чтобы определить конец проблемного периода
+            $lastProcessedAt = $at;
+
             // 5xx или большое время ответа
             if (($status >= 500 && $status <= 599) || $time >= $slaResponseTime) {
-                $lastFailAt = $at;
                 if ($firstFailAt === null) {
                     $firstFailAt = $at;
                 }
@@ -55,45 +93,31 @@ class LogAnalyzer
                 if ($firstFailAt === null) {
                     continue;
                 }
-                $succeed++;
-
-                // если с последней проблемы прошло больше sample period, то обрабатываем проблемный период
-                if ($at->getTimestamp() > $lastFailAt->getTimestamp() + $samplePeriod) {
-                    $availability = $failed / ($succeed + $failed);
-                    if ($availability < $slaAvailability) {
-                        $result[] = [
-                            'first problem' => $firstFailAt,
-                            'last problem' => $lastFailAt,
-                            'now' => $at,
-                            'succeed' => $succeed,
-                            'failed' => $failed,
-                            'availability' => $availability,
-                        ];
-                    }
-                    $firstFailAt = $lastFailAt = null;
-                    $failed = $succeed = 0;
-                }
+                $succeeded++;
             }
         }
 
-        if (false && $firstFailAt) {
-            $availability = $failed / ($succeed + $failed);
+        if ($firstFailAt) {
+            $availability = (float)($succeeded / ($succeeded + $failed) * 100);
             if ($availability < $slaAvailability) {
                 $result[] = [
-                    'first problem' => $firstFailAt,
-                    'last problem' => $lastFailAt,
-                    'now' => $at,
-                    'succeed' => $succeed,
-                    'failed' => $failed,
+                    'period start' => $firstFailAt,
+                    'period end' => $lastProcessedAt,
+                    'current time' => $at ?? null,
+                    'succeeded count' => $succeeded,
+                    'failed count' => $failed,
                     'availability' => $availability,
                 ];
             }
         }
 
-        // return \array_map(static function (array $item) {
-        //     return \array_merge($item, ['first problem' => date('H:i:s', $item['first problem'])]);
-        // }, $result);
-        return $result;
+        return array_map(static function (array $item): array {
+            $item['period start'] = $item['period start']->format('c');
+            $item['period end'] = $item['period end']->format('c');
+            $item['current time'] = $item['current time']->format('c');
+
+            return $item;
+        }, $result);
     }
 
     /**
@@ -103,7 +127,7 @@ class LogAnalyzer
     {
         $line = trim($line);
         if (!$line) {
-            throw new RuntimeException('Empty log line');
+            return null;
         }
 
         // 192.168.32.181 - - [14/06/2017:16:47:02 +1000] "PUT /rest/v1.4/documents?zone=default&_rid=6076537c HTTP/1.1" 200 2 44.510983 "-" "@list-item-updater" prio:0

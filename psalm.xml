@@ -10,6 +10,7 @@
 >
     <issueHandlers>
         <LessSpecificReturnType errorLevel="info" />
+        <RedundantConditionGivenDocblockType errorLevel="info" />
     </issueHandlers>
 
     <plugins>
