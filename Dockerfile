@@ -12,5 +12,5 @@ RUN composer install
 COPY . /app
 CMD [ "php", "./analyze.php" ]
 #CMD [ "vendor/bin/phpunit", "test/Unit" ]
-#CMD [ "vendor/bin/phpstan" ]
+#CMD [ "vendor/bin/phpstan", "analyse" ]
 #CMD [ "vendor/bin/psalm" ]

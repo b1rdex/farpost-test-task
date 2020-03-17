@@ -7,22 +7,12 @@ namespace App;
 use DateTimeImmutable;
 use RuntimeException;
 
-class LogAnalyzer
+final class LogAnalyzer
 {
     /**
      * @var callable|null
      */
-    private $onLogParseError;
-
-    /**
-     * @param callable|null $onLogParseError обработчик исключений разбора лога
-     *
-     * @psalm-param callable(\Throwable):void $onLogParseError
-     */
-    public function __construct(callable $onLogParseError = null)
-    {
-        $this->onLogParseError = $onLogParseError;
-    }
+    private $onLogParseError = null;
 
     /**
      * @param resource $stream поток данных из access-лог'а
@@ -65,8 +55,7 @@ class LogAnalyzer
             // если с последней проблемы прошло больше sample period, то обрабатываем проблемный период
             if ($firstFailAt !== null && $lastProcessedAt !== null && $at->getTimestamp() > $lastProcessedAt->getTimestamp() + $samplePeriod) {
                 $availability = (float)($succeeded / ($succeeded + $failed) * 100);
-                // todo: remove true
-                if (true || $availability < $slaAvailability) {
+                if ($availability < $slaAvailability) {
                     $result[] = [
                         'period start' => $firstFailAt,
                         'period end' => $lastProcessedAt,
@@ -97,7 +86,7 @@ class LogAnalyzer
             }
         }
 
-        if ($firstFailAt) {
+        if ($firstFailAt !== null) {
             $availability = (float)($succeeded / ($succeeded + $failed) * 100);
             if ($availability < $slaAvailability) {
                 $result[] = [
@@ -139,10 +128,19 @@ class LogAnalyzer
         }
 
         $at = DateTimeImmutable::createFromFormat('d/m/Y:H:i:s O', $matches['at']);
-        if (!$at) {
+        if (!($at instanceof DateTimeImmutable)) {
             throw new RuntimeException('Date parse failed – ' . $matches['at']);
         }
 
         return ['at' => $at, 'status' => (int)$matches['status'], 'time' => (float)$matches['time']];
+    }
+
+    /**
+     * @param callable|null $onLogParseError
+     * @psalm-param callable(\Throwable):void $onLogParseError
+     */
+    public function setOnLogParseError(?callable $onLogParseError): void
+    {
+        $this->onLogParseError = $onLogParseError;
     }
 }

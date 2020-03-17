@@ -6,13 +6,15 @@ require __DIR__ . '/vendor/autoload.php';
 
 use App\LogAnalyzer;
 
+$analyzer = new LogAnalyzer();
+
 // ошибки чтения лог файла пишем в stderr
 $onLogParseError = static function (Throwable $throwable): void {
     if ($throwable->getMessage() !== 'Empty log line') {
         fwrite(STDERR, $throwable->__toString() . \PHP_EOL);
     }
 };
-$analyzer = new LogAnalyzer($onLogParseError);
+$analyzer->setOnLogParseError($onLogParseError);
 
 $stream = STDIN;
 $availability = 99.9;

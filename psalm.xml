@@ -11,6 +11,8 @@
     <issueHandlers>
         <LessSpecificReturnType errorLevel="info" />
         <RedundantConditionGivenDocblockType errorLevel="info" />
+        <MixedAssignment errorLevel="info" />
+        <MixedMethodCall errorLevel="info" />
     </issueHandlers>
 
     <plugins>

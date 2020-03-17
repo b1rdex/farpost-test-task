@@ -9,3 +9,10 @@ parameters:
 		- src/
 		- test/
 	tmpDir: %currentWorkingDirectory%/.build/phpstan/
+	ignoreErrors:
+		- '#Call to function assert\(\) with true will always evaluate to true#'
+		- '#Instanceof between (\w+) and \1 will always evaluate to true#'
+		- '#Call to function is_(\w+)\(\) with \1 will always evaluate to true#'
+		- '#Method App\\LogAnalyzer::parseLine\(\) has a nullable return type declaration#'
+		- '#Only booleans are allowed in a negated boolean#'
+		- '#Method App\\LogAnalyzer::setOnLogParseError\(\) has parameter \$onLogParseError with a nullable type declaration#'

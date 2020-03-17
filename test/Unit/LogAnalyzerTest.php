@@ -33,6 +33,7 @@ final class LogAnalyzerTest extends Framework\TestCase
     private function createStream(string $log)
     {
         $stream = fopen('php://memory', 'r+');
+        \assert(is_resource($stream));
         fwrite($stream, $log);
         rewind($stream);
 
@@ -64,7 +65,7 @@ final class LogAnalyzerTest extends Framework\TestCase
     }
 
     /**
-     * @return \Generator<string, array{slaAvailability: float, slaResponseTime: int, log: string, expected: array}>
+     * @return \Generator<string, array{log: string, expected: array, slaAvailability: float, slaResponseTime: int}>
      */
     public function provider(): iterable
     {
