@@ -11,7 +11,7 @@ declare(strict_types=1);
  * @see https://github.com/ergebnis/php-library-template
  */
 
-namespace Ergebnis\Library\Test\Unit;
+namespace Test\Unit;
 
 use Ergebnis\Library\Example;
 use Ergebnis\Test\Util\Helper;

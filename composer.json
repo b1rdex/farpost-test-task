@@ -1,17 +1,11 @@
 {
-  "name": "ergebnis/php-library-template",
-  "type": "library",
-  "description": "Provides a GitHub repository template for a PHP library, using GitHub actions.",
-  "homepage": "https://github.com/ergebnis/php-library-template",
-  "license": "MIT",
-  "authors": [
-    {
-      "name": "Andreas Möller",
-      "email": "am@localheinz.com"
-    }
-  ],
+  "name": "b1rdex/farpost-test-task",
+  "type": "project",
+  "description": "Just a test task",
+  "homepage": "https://github.com/b1rdex/farpost-test-task",
+  "license": "proprietary",
   "require": {
-    "php": "^7.2"
+    "php": "^7.4"
   },
   "require-dev": {
     "ergebnis/composer-normalize": "^2.3.2",
@@ -32,23 +26,19 @@
   },
   "config": {
     "platform": {
-      "php": "7.2.25"
+      "php": "7.4.0"
     },
     "preferred-install": "dist",
     "sort-packages": true
   },
   "autoload": {
     "psr-4": {
-      "Ergebnis\\Library\\": "src/"
+      "App\\": "src/"
     }
   },
   "autoload-dev": {
     "psr-4": {
-      "Ergebnis\\Library\\Test\\": "test/"
+      "Test\\": "test/"
     }
-  },
-  "support": {
-    "issues": "https://github.com/ergebnis/php-library-template/issues",
-    "source": "https://github.com/ergebnis/php-library-template"
   }
 }
