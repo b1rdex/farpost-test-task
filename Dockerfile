@@ -7,10 +7,9 @@ RUN composer global require hirak/prestissimo
 WORKDIR /app
 COPY composer.json /app
 COPY composer.lock /app
-RUN composer install
+RUN composer install --no-dev
 
-COPY . /app
-CMD [ "php", "./analyze.php" ]
-#CMD [ "vendor/bin/phpunit", "test/Unit" ]
-#CMD [ "vendor/bin/phpstan", "analyse" ]
-#CMD [ "vendor/bin/psalm" ]
+COPY src/ /app/src
+COPY analyze.php /app
+ENTRYPOINT [ "php", "analyze.php" ]
+CMD []

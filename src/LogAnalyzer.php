@@ -12,19 +12,20 @@ final class LogAnalyzer
     /**
      * @var callable|null
      */
-    private $onLogParseError = null;
+    private $onLogParseError;
 
     /**
-     * @param resource $stream поток данных из access-лог'а
-     * @param float $slaAvailability минимально допустимый уровень доступности (проценты. Например, "99.9")
-     * @param int $slaResponseTime приемлемое время ответа (миллисекунды. Например, "45")
-     * @param int $samplePeriod период семплирования интервалов, в секундах
+     * @param resource $stream          поток данных из access-лог'а
+     * @param float    $slaAvailability минимально допустимый уровень доступности (проценты. Например, "99.9")
+     * @param int      $slaResponseTime приемлемое время ответа (миллисекунды. Например, "45")
+     * @param int      $samplePeriod    период семплирования интервалов, в секундах. По-умолчанию 5 секунд
      *                                  (сколько секунд должно пройти с последней failure, чтобы считать что интервал завершён)
      *
-     * @return array
+     * @return \App\Period[]
      */
-    public function analyze($stream, float $slaAvailability, int $slaResponseTime, int $samplePeriod = 5): array
+    public function analyze($stream, float $slaAvailability, int $slaResponseTime, ?int $samplePeriod = null): array
     {
+        $samplePeriod = $samplePeriod ?? 5;
         $result = [];
 
         $firstFailAt = null;
@@ -53,17 +54,13 @@ final class LogAnalyzer
             assert(\is_float($time));
 
             // если с последней проблемы прошло больше sample period, то обрабатываем проблемный период
-            if ($firstFailAt !== null && $lastProcessedAt !== null && $at->getTimestamp() > $lastProcessedAt->getTimestamp() + $samplePeriod) {
-                $availability = (float)($succeeded / ($succeeded + $failed) * 100);
-                if ($availability < $slaAvailability) {
-                    $result[] = [
-                        'period start' => $firstFailAt,
-                        'period end' => $lastProcessedAt,
-                        'current time' => $at,
-                        'succeeded count' => $succeeded,
-                        'failed count' => $failed,
-                        'availability' => $availability,
-                    ];
+            if (
+                $firstFailAt !== null && $lastProcessedAt !== null
+                && $at->getTimestamp() > $lastProcessedAt->getTimestamp() + $samplePeriod
+            ) {
+                $period = new Period($firstFailAt, $lastProcessedAt, $succeeded, $failed);
+                if ($period->availability() < $slaAvailability) {
+                    $result[] = $period;
                 }
                 $firstFailAt = null;
                 $failed = $succeeded = 0;
@@ -86,27 +83,14 @@ final class LogAnalyzer
             }
         }
 
-        if ($firstFailAt !== null) {
-            $availability = (float)($succeeded / ($succeeded + $failed) * 100);
-            if ($availability < $slaAvailability) {
-                $result[] = [
-                    'period start' => $firstFailAt,
-                    'period end' => $lastProcessedAt,
-                    'current time' => $at ?? null,
-                    'succeeded count' => $succeeded,
-                    'failed count' => $failed,
-                    'availability' => $availability,
-                ];
+        if ($firstFailAt !== null && $lastProcessedAt !== null) {
+            $period = new Period($firstFailAt, $lastProcessedAt, $succeeded, $failed);
+            if ($period->availability() < $slaAvailability) {
+                $result[] = $period;
             }
         }
 
-        return array_map(static function (array $item): array {
-            $item['period start'] = $item['period start']->format('c');
-            $item['period end'] = $item['period end']->format('c');
-            $item['current time'] = $item['current time']->format('c');
-
-            return $item;
-        }, $result);
+        return $result;
     }
 
     /**
@@ -137,6 +121,7 @@ final class LogAnalyzer
 
     /**
      * @param callable|null $onLogParseError
+     *
      * @psalm-param callable(\Throwable):void $onLogParseError
      */
     public function setOnLogParseError(?callable $onLogParseError): void
