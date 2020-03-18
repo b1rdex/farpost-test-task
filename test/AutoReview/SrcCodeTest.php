@@ -3,12 +3,12 @@
 declare(strict_types=1);
 
 /**
- * Copyright (c) 2017-2020 Andreas Möller
+ * Copyright (c) 2020 Anatoly Pashin
  *
  * For the full copyright and license information, please view
  * the LICENSE.md file that was distributed with this source code.
  *
- * @see https://github.com/ergebnis/php-library-template
+ * @see https://github.com/b1rdex/farpost-test-task
  */
 
 namespace Test\AutoReview;

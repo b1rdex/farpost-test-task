@@ -2,6 +2,15 @@
 
 declare(strict_types=1);
 
+/**
+ * Copyright (c) 2020 Anatoly Pashin
+ *
+ * For the full copyright and license information, please view
+ * the LICENSE.md file that was distributed with this source code.
+ *
+ * @see https://github.com/b1rdex/farpost-test-task
+ */
+
 require __DIR__ . '/vendor/autoload.php';
 
 use App\LogAnalyzer;
@@ -10,19 +19,19 @@ $analyzer = new LogAnalyzer();
 
 // ошибки чтения лог файла пишем в stderr
 $onLogParseError = static function (Throwable $throwable): void {
-    if ($throwable->getMessage() !== 'Empty log line') {
-        fwrite(STDERR, $throwable->__toString() . \PHP_EOL);
+    if ('Empty log line' !== $throwable->getMessage()) {
+        \fwrite(\STDERR, $throwable->__toString() . \PHP_EOL);
     }
 };
 $analyzer->setOnLogParseError($onLogParseError);
 
-$options = getopt('u:t:s::v') ?: [];
-$availability = (float)($options['u'] ?? 0);
-$responseTime = (int)($options['t'] ?? 0);
-$samplePeriod = (int)($options['s'] ?? 5);
+$options = \getopt('u:t:s::v') ?: [];
+$availability = (float) ($options['u'] ?? 0);
+$responseTime = (int) ($options['t'] ?? 0);
+$samplePeriod = (int) ($options['s'] ?? 5);
 $isVerbose = isset($options['v']);
 
-if ($availability < 1 || $responseTime < 1 || $samplePeriod < 1) {
+if (1 > $availability || 1 > $responseTime || 1 > $samplePeriod) {
     echo <<<'TXT'
     Анализатор access log-а
     =======================
@@ -47,16 +56,17 @@ if ($availability < 1 || $responseTime < 1 || $samplePeriod < 1) {
         $ cat access.log | php analyze.php -u 99.9 -t 45
         13:32:26 13:33:15 94.5
         15:23:02 15:23:08 99.8
-    TXT . PHP_EOL;
-    exit(1);
+    TXT . \PHP_EOL;
+
+    exit(2);
 }
 
-$stream = STDIN;
+$stream = \STDIN;
 
 if ($isVerbose) {
     echo 'Parameters: Max response time: ' . $responseTime
         . '. Min availability: ' . $availability
-        . '. Sample period: ' . $samplePeriod . PHP_EOL . PHP_EOL;
+        . '. Sample period: ' . $samplePeriod . \PHP_EOL . \PHP_EOL;
 }
 
 $result = $analyzer->analyze($stream, $availability, $responseTime);
@@ -68,11 +78,11 @@ foreach ($result as $period) {
             . ' succeeded ' . $period->getSucceeded()
             . ' / failed ' . $period->getFailed()
             . ' (' . $period->availability() . '%)'
-            . PHP_EOL;
+            . \PHP_EOL;
     } else {
         echo $period->getStart()->format('H:i:s')
             . ' ' . $period->getEnd()->format('H:i:s')
             . ' ' . $period->availability()
-            . PHP_EOL;
+            . \PHP_EOL;
     }
 }

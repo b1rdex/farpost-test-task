@@ -2,6 +2,15 @@
 
 declare(strict_types=1);
 
+/**
+ * Copyright (c) 2020 Anatoly Pashin
+ *
+ * For the full copyright and license information, please view
+ * the LICENSE.md file that was distributed with this source code.
+ *
+ * @see https://github.com/b1rdex/farpost-test-task
+ */
+
 namespace Test\Unit;
 
 use App\LogAnalyzer;
@@ -13,15 +22,21 @@ use RuntimeException;
  * @internal
  *
  * @covers \App\LogAnalyzer
+ *
  * @uses   \App\Period
  */
 final class LogAnalyzerTest extends TestCase
 {
     /**
-     * @test
      * @dataProvider provider
+     *
+     * @param string $log
+     * @param array  $expected
+     * @param float  $slaAvailability
+     * @param int    $slaResponseTime
+     * @param ?int   $samplePeriod
      */
-    public function it_should_work(string $log, array $expected, float $slaAvailability, int $slaResponseTime, ?int $samplePeriod = null): void
+    public function testItShouldWork(string $log, array $expected, float $slaAvailability, int $slaResponseTime, ?int $samplePeriod = null): void
     {
         $sut = new LogAnalyzer();
         $stream = $this->createStream($log);
@@ -35,26 +50,10 @@ final class LogAnalyzerTest extends TestCase
                 'availability' => $period->availability(),
             ];
         }, $result);
-        static::assertEquals($expected, $result);
+        self::assertEquals($expected, $result);
     }
 
-    /**
-     * @return resource
-     */
-    private function createStream(string $log)
-    {
-        $stream = fopen('php://memory', 'rb+');
-        \assert(is_resource($stream));
-        fwrite($stream, $log);
-        rewind($stream);
-
-        return $stream;
-    }
-
-    /**
-     * @test
-     */
-    public function it_should_throw_on_log_parse(): void
+    public function testItShouldThrowOnLogParse(): void
     {
         $sut = new LogAnalyzer();
         $stream = $this->createStream('zzz');
@@ -63,10 +62,7 @@ final class LogAnalyzerTest extends TestCase
         $sut->analyze($stream, .0, 0);
     }
 
-    /**
-     * @test
-     */
-    public function it_should_throw_on_date_parse(): void
+    public function testItShouldThrowOnDateParse(): void
     {
         $sut = new LogAnalyzer();
         $stream = $this->createStream('192.168.32.181 - - [14/Jun/2017:16:47:02 +1000] "PUT /rest/v1.4/documents?zone=default&_rid=7ae28555 HTTP/1.1" 200 2 23.251219 "-" "@list-item-updater" prio:0');
@@ -227,5 +223,20 @@ final class LogAnalyzerTest extends TestCase
             'slaResponseTime' => 31,
             'samplePeriod' => 60,
         ];
+    }
+
+    /**
+     * @param string $log
+     *
+     * @return resource
+     */
+    private function createStream(string $log)
+    {
+        $stream = \fopen('php://memory', 'rb+');
+        \assert(\is_resource($stream));
+        \fwrite($stream, $log);
+        \rewind($stream);
+
+        return $stream;
     }
 }
