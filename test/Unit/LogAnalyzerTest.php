@@ -14,7 +14,6 @@ declare(strict_types=1);
 namespace Test\Unit;
 
 use App\LogAnalyzer;
-use App\Period;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -41,16 +40,18 @@ final class LogAnalyzerTest extends TestCase
         $sut = new LogAnalyzer();
         $stream = $this->createStream($log);
         $result = $sut->analyze($stream, $slaAvailability, $slaResponseTime, $samplePeriod);
-        $result = \array_map(static function (Period $period): array {
-            return [
+        $actual = [];
+
+        foreach ($result as $period) {
+            $actual[] = [
                 'period start' => $period->getStart()->format('c'),
                 'period end' => $period->getEnd()->format('c'),
                 'succeeded count' => $period->getSucceeded(),
                 'failed count' => $period->getFailed(),
                 'availability' => $period->availability(),
             ];
-        }, $result);
-        self::assertEquals($expected, $result);
+        }
+        self::assertEquals($expected, $actual);
     }
 
     public function testItShouldThrowOnLogParse(): void
@@ -59,7 +60,11 @@ final class LogAnalyzerTest extends TestCase
         $stream = $this->createStream('zzz');
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessageMatches('/Unknown log format/');
-        $sut->analyze($stream, .0, 0);
+
+        foreach ($sut->analyze($stream, .0, 0) as $period) {
+            continue;
+        }
+        self::fail();
     }
 
     public function testItShouldThrowOnDateParse(): void
@@ -68,7 +73,10 @@ final class LogAnalyzerTest extends TestCase
         $stream = $this->createStream('192.168.32.181 - - [14/Jun/2017:16:47:02 +1000] "PUT /rest/v1.4/documents?zone=default&_rid=7ae28555 HTTP/1.1" 200 2 23.251219 "-" "@list-item-updater" prio:0');
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessageMatches('/Date parse failed/');
-        $sut->analyze($stream, .0, 0);
+
+        foreach ($sut->analyze($stream, .0, 0) as $period) {
+            continue;
+        }
     }
 
     /**

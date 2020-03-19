@@ -30,12 +30,12 @@ final class LogAnalyzer
      * @param int      $samplePeriod    период семплирования интервалов, в секундах. По-умолчанию 5 секунд
      *                                  (сколько секунд должно пройти с последней failure, чтобы считать что интервал завершён)
      *
-     * @return \App\Period[]
+     * @return \App\Period[]&\Generator
+     * @psalm-return \Generator<int, \App\Period>
      */
-    public function analyze($stream, float $slaAvailability, int $slaResponseTime, ?int $samplePeriod = null): array
+    public function analyze($stream, float $slaAvailability, int $slaResponseTime, ?int $samplePeriod = null): iterable
     {
         $samplePeriod = $samplePeriod ?? 5;
-        $result = [];
 
         $firstFailAt = null;
         $lastProcessedAt = null;
@@ -72,7 +72,7 @@ final class LogAnalyzer
                 $period = new Period($firstFailAt, $lastProcessedAt, $succeeded, $failed);
 
                 if ($period->availability() < $slaAvailability) {
-                    $result[] = $period;
+                    yield $period;
                 }
                 $firstFailAt = null;
                 $failed = $succeeded = 0;
@@ -99,11 +99,9 @@ final class LogAnalyzer
             $period = new Period($firstFailAt, $lastProcessedAt, $succeeded, $failed);
 
             if ($period->availability() < $slaAvailability) {
-                $result[] = $period;
+                yield $period;
             }
         }
-
-        return $result;
     }
 
     /**
